@@ -47,6 +47,8 @@ struct LuaVM
 
     void BlockDraw(bool aBlockDraw);
 
+    void SyncVr(VrInfo info);
+
     // Used by TweakDB when you delete a custom record
     void RemoveTDBIDDerivedFrom(uint64_t aDBID);
     bool GetTDBIDDerivedFrom(uint64_t aDBID, TiltedPhoques::Vector<uint64_t>& aDerivedList);

@@ -2,6 +2,8 @@
 
 #include "common/D3D12Downlevel.h"
 #include "window/Window.h"
+#include <common/HelperMath.h>
+#include <reverse/BasicTypes.h>
 
 using TPresentD3D12Downlevel = HRESULT(ID3D12CommandQueueDownlevel*, ID3D12GraphicsCommandList*, ID3D12Resource*, HWND, D3D12_DOWNLEVEL_PRESENT_FLAGS);
 using TCreateCommittedResource =
@@ -10,6 +12,21 @@ using TExecuteCommandLists = void(ID3D12CommandQueue*, UINT, ID3D12CommandList* 
 using TCRenderNode_Present_InternalPresent = void*(int32_t*, uint8_t, UINT);
 using TCRenderGlobal_Resize = void*(uint32_t a1, uint32_t a2, uint32_t a3, uint8_t a4, int32_t* a5);
 using TCRenderGlobal_Shutdown = void*(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4);
+
+namespace vr
+{
+class IVRSystem;
+class IVRRenderModels;
+}
+
+struct VrInfo
+{
+    bool m_isRightEye = false;
+    Vector3 m_position;
+    Quaternion m_rotation;
+    float m_ipd = 0.06f;
+    float m_fov = 110.0f;
+};
 
 struct D3D12
 {
@@ -29,6 +46,7 @@ struct D3D12
     LRESULT OnWndProc(HWND ahWnd, UINT auMsg, WPARAM awParam, LPARAM alParam) const;
 
     TiltedPhoques::Signal<void()> OnInitialized;
+    TiltedPhoques::Signal<void(VrInfo)> OnSyncVr;
 
     ID3D12Device* GetDevice() const;
     std::tuple<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> CreateTextureDescriptor();
@@ -36,6 +54,10 @@ struct D3D12
 protected:
     void Hook();
     void HookGame();
+    
+    void InitVr();
+    void ShutdownVr();
+    void UpdateHMDMatrixPose();
 
     struct FrameContext
     {
@@ -65,6 +87,17 @@ protected:
     static void* CRenderGlobal_Shutdown(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4);
 
 private:
+    vr::IVRSystem* m_pHMD = nullptr;
+    vr::IVRRenderModels* m_pRenderModels = nullptr;
+    Matrix4x4 m_hmdDevicePose;
+    Vector3 m_hmdDeviceLocation;
+    Quaternion m_hmdDeviceRotation;
+
+    int hack_frameCounter = 0;
+    bool hack_vrInitialized = false;
+
+    VrInfo m_vrInfo;
+
     TPresentD3D12Downlevel* m_realPresentD3D12Downlevel{nullptr};
     TCreateCommittedResource* m_realCreateCommittedResource{nullptr};
     TExecuteCommandLists* m_realExecuteCommandLists{nullptr};

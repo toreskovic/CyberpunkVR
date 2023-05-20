@@ -269,6 +269,10 @@ void Scripting::PostInitializeScripting()
         return Quaternion{table["i"].get_or(0.f), table["j"].get_or(0.f), table["k"].get_or(0.f), table["r"].get_or(0.f)};
     };
 
+    luaVm.new_usertype<VrInfo>("VrInfo", "m_isRightEye", &VrInfo::m_isRightEye, "m_position", &VrInfo::m_position,
+                               "m_rotation", &VrInfo::m_rotation, "m_ipd", &VrInfo::m_ipd, "m_fov", &VrInfo::m_fov);
+
+
     globals.new_usertype<CName>(
         "CName", sol::constructors<CName(const std::string&), CName(uint64_t), CName(uint32_t, uint32_t), CName(const CName&), CName()>(), sol::call_constructor,
         sol::constructors<CName(const std::string&), CName(uint64_t)>(), sol::meta_function::to_string, &CName::ToString, sol::meta_function::equal_to, &CName::operator==,
@@ -577,6 +581,11 @@ void Scripting::TriggerOnOverlayOpen() const
 void Scripting::TriggerOnOverlayClose() const
 {
     m_store.TriggerOnOverlayClose();
+}
+
+void Scripting::SyncVr(VrInfo info)
+{
+    m_store.SyncVr(info);
 }
 
 sol::object Scripting::GetMod(const std::string& acName) const

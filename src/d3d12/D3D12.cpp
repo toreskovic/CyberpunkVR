@@ -79,4 +79,6 @@ D3D12::D3D12(Window& aWindow, Paths& aPaths, Options& aOptions)
 D3D12::~D3D12()
 {
     assert(!m_initialized);
+
+    ShutdownVr();
 }

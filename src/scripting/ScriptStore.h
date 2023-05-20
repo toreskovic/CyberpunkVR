@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ScriptContext.h"
+#include <d3d12/D3D12.h>
 
 struct ScriptStore
 {
@@ -19,6 +20,8 @@ struct ScriptStore
     void TriggerOnInit() const;
     void TriggerOnUpdate(float aDeltaTime) const;
     void TriggerOnDraw() const;
+    
+    void SyncVr(VrInfo info) const;
 
     void TriggerOnOverlayOpen() const;
     void TriggerOnOverlayClose() const;

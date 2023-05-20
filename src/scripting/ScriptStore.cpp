@@ -135,6 +135,12 @@ void ScriptStore::TriggerOnDraw() const
         mod.TriggerOnDraw();
 }
 
+void ScriptStore::SyncVr(VrInfo info) const
+{
+    for (const auto& mod : m_contexts | std::views::values)
+        mod.SyncVr(info);
+}
+
 void ScriptStore::TriggerOnOverlayOpen() const
 {
     for (const auto& mod : m_contexts | std::views::values)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "LuaSandbox.h"
+#include "d3d12/D3D12.h"
 
 struct ScriptContext
 {
@@ -18,6 +19,8 @@ struct ScriptContext
     void TriggerOnInit() const;
     void TriggerOnUpdate(float aDeltaTime) const;
     void TriggerOnDraw() const;
+
+    void SyncVr(VrInfo info) const;
 
     void TriggerOnOverlayOpen() const;
     void TriggerOnOverlayClose() const;
@@ -38,6 +41,7 @@ private:
     sol::function m_onShutdown{};
     sol::function m_onUpdate{};
     sol::function m_onDraw{};
+    sol::function m_onSyncVr{};
     sol::function m_onOverlayOpen{};
     sol::function m_onOverlayClose{};
     TiltedPhoques::Vector<VKBind> m_vkBinds{};

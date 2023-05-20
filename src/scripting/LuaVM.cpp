@@ -89,6 +89,14 @@ void LuaVM::BlockDraw(bool aBlockDraw)
     m_drawBlocked = aBlockDraw;
 }
 
+void LuaVM::SyncVr(VrInfo info)
+{
+    if (IsInitialized())
+    {
+        m_scripting.SyncVr(info);
+    }
+}
+
 void LuaVM::RemoveTDBIDDerivedFrom(uint64_t aDBID)
 {
     std::lock_guard _{m_tdbidLock};

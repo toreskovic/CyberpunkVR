@@ -57,6 +57,8 @@ ScriptContext::ScriptContext(LuaSandbox& aLuaSandbox, const std::filesystem::pat
             m_onUpdate = aCallback;
         else if (acName == "onDraw")
             m_onDraw = aCallback;
+        else if(acName == "onSyncVr")
+            m_onSyncVr = aCallback;
         else if (acName == "onOverlayOpen")
             m_onOverlayOpen = aCallback;
         else if (acName == "onOverlayClose")
@@ -273,6 +275,13 @@ void ScriptContext::TriggerOnDraw() const
     ImGui::GetStyle() = previousStyle;
 
     m_sandbox.SetImGuiAvailable(false);
+}
+
+void ScriptContext::SyncVr(VrInfo info) const
+{
+    auto lockedState = m_sandbox.GetLockedState();
+
+    TryLuaFunction(m_logger, m_onSyncVr, info);
 }
 
 void ScriptContext::TriggerOnOverlayOpen() const

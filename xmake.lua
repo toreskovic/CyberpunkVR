@@ -65,6 +65,9 @@ target("cyber_engine_tweaks")
     set_filename("cyber_engine_tweaks.asi")
     add_files("src/**.cpp")
     add_headerfiles("src/**.h", "build/CETVersion.h")
+    add_includedirs("src/", "build/", "vendor/OpenVR/headers")
+    add_linkdirs("vendor/OpenVR/lib/win64")
+    add_links("openvr_api")
     add_includedirs("src/", "build/")
     add_syslinks("User32", "Version", "d3d11")
     add_packages("spdlog", "nlohmann_json", "minhook", "hopscotch-map", "imgui", "mem", "sol2", "tiltedcore", "sqlite3", "openrestry-luajit", "xbyak", "stb")
@@ -87,6 +90,8 @@ target("cyber_engine_tweaks")
         os.cp("fonts/*", "package/bin/x64/plugins/cyber_engine_tweaks/fonts")
 
         os.cp("vendor/asiloader/*", "package/bin/x64/")
+
+        os.cp("vendor/OpenVR/bin/win64/*", "package/bin/x64/")
 
         os.cp("LICENSE", "package/bin/x64/")
         os.cp("ThirdParty_LICENSES", "package/bin/x64/plugins/cyber_engine_tweaks/ThirdParty_LICENSES")

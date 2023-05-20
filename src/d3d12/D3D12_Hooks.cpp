@@ -10,6 +10,14 @@
 
 #include <VersionHelpers.h>
 
+#include <chrono>
+#include <thread>
+#include <openvr.h>
+#include <common/HelperMath.h>
+
+vr::TrackedDevicePose_t m_rTrackedDevicePose[vr::k_unMaxTrackedDeviceCount];
+Matrix4x4 m_rmat4DevicePose[vr::k_unMaxTrackedDeviceCount];
+
 HRESULT D3D12::PresentDownlevel(
     ID3D12CommandQueueDownlevel* apCommandQueueDownlevel, ID3D12GraphicsCommandList* apOpenCommandList, ID3D12Resource* apSourceTex2D, HWND ahWindow,
     D3D12_DOWNLEVEL_PRESENT_FLAGS aFlags)
@@ -154,6 +162,55 @@ void* D3D12::CRenderNode_Present_InternalPresent(int32_t* apDeviceIndex, uint8_t
         }
     }
 
+    if (d3d12.hack_vrInitialized)
+    {
+        const auto bufferIndex = (d3d12.m_pdxgiSwapChain != nullptr) ? (d3d12.m_pdxgiSwapChain->GetCurrentBackBufferIndex()) : (d3d12.m_downlevelBufferIndex);
+        auto& frameContext = d3d12.m_frameContexts[bufferIndex];
+
+        vr::VRTextureBounds_t bounds;
+        bounds.uMin = 0.0f;
+        bounds.uMax = 1.0f;
+        bounds.vMin = 0.0f;
+        bounds.vMax = 1.0f;
+
+        if (!d3d12.m_vrInfo.m_isRightEye)
+        {
+            vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
+
+            d3d12.UpdateHMDMatrixPose();
+
+            vr::D3D12TextureData_t d3d12LeftEyeTexture = {frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0};
+            vr::Texture_t leftEyeTexture = {(void*)&d3d12LeftEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto};
+            vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, &bounds, vr::Submit_Default);
+
+            if (err != vr::EVRCompositorError::VRCompositorError_None)
+            {
+                std::string s;
+                s = std::format("Compositor error: {}", (int)err);
+                Log::Error(s);
+            }
+        }
+        else
+        {
+            vr::D3D12TextureData_t d3d12RightEyeTexture = {frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0};
+            vr::Texture_t rightEyeTexture = {(void*)&d3d12RightEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto};
+            vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture, &bounds, vr::Submit_Default);
+        }
+
+        d3d12.m_vrInfo.m_isRightEye = !d3d12.m_vrInfo.m_isRightEye;
+        CET::Get().GetVM().SyncVr(d3d12.m_vrInfo);
+    }
+    else
+    {
+        if (d3d12.hack_frameCounter > 600)
+        {
+            d3d12.hack_vrInitialized = true;
+            d3d12.InitVr();
+        }
+
+        d3d12.hack_frameCounter++;
+    }
+
     return d3d12.m_realInternalPresent(apDeviceIndex, aSomeSync, aSyncInterval);
 }
 
@@ -277,4 +334,180 @@ void D3D12::HookGame()
         Log::Error("Could not hook CRenderGlobal_Shutdown function!");
     else
         Log::Info("CRenderGlobal_Shutdown function hook complete!");
+}
+
+void D3D12::InitVr()
+{
+    // Loading the SteamVR Runtime
+    Log::Info("Initializing VR");
+    vr::EVRInitError eError = vr::VRInitError_None;
+    m_pHMD = vr::VR_Init(&eError, vr::VRApplication_Scene);
+
+    if (eError != vr::VRInitError_None)
+    {
+        m_pHMD = nullptr;
+        Log::Error("Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+    }
+
+    m_pRenderModels = (vr::IVRRenderModels*)vr::VR_GetGenericInterface(vr::IVRRenderModels_Version, &eError);
+    if (!m_pRenderModels)
+    {
+        m_pHMD = nullptr;
+        vr::VR_Shutdown();
+
+        Log::Error("Unable to get render model interface: %s",
+                  vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+    }
+
+    // init compositor
+    vr::EVRInitError peError = vr::VRInitError_None;
+
+	if ( !vr::VRCompositor() )
+	{
+		Log::Error( "Compositor initialization failed. See log file for details\n" );
+	}
+
+}
+
+void D3D12::ShutdownVr()
+{
+    Log::Info("Shutting down VR");
+    vr::VR_Shutdown();
+}
+
+Matrix4x4 ConvertSteamVRMatrixToMatrix4( const vr::HmdMatrix34_t &matPose )
+{
+	Matrix4x4 matrixObj(
+		matPose.m[0][0], matPose.m[1][0], matPose.m[2][0], 0.0,
+		matPose.m[0][1], matPose.m[1][1], matPose.m[2][1], 0.0,
+		matPose.m[0][2], matPose.m[1][2], matPose.m[2][2], 0.0,
+		matPose.m[0][3], matPose.m[1][3], matPose.m[2][3], 1.0f
+		);
+
+	return matrixObj;
+}
+
+Quaternion Matrix4ToQuat(Matrix4x4 mat)
+{
+    Matrix4x4 te = mat;
+
+    float m11 = te[0], m12 = te[1], m13 = te[2], m21 = te[4], m22 = te[5], m23 = te[6], m31 = te[8], m32 = te[9],
+          m33 = te[10];
+
+    float trace = m11 + m22 + m33;
+
+    Quaternion quat;
+
+    if (trace > 0)
+    {
+        float s = 0.5f / sqrtf(trace + 1.0f);
+
+        quat.r = 0.25f / s;
+        quat.i = (m32 - m23) * s;
+        quat.j = (m13 - m31) * s;
+        quat.k = (m21 - m12) * s;
+    }
+    else if (m11 > m22 && m11 > m33)
+    {
+        float s = 2.0f * sqrtf(1.0f + m11 - m22 - m33);
+
+        quat.r = (m32 - m23) / s;
+        quat.i = 0.25f * s;
+        quat.j = (m12 + m21) / s;
+        quat.k = (m13 + m31) / s;
+    }
+    else if (m22 > m33)
+    {
+        float s = 2.0f * sqrtf(1.0f + m22 - m11 - m33);
+
+        quat.r = (m13 - m31) / s;
+        quat.i = (m12 + m21) / s;
+        quat.j = 0.25f * s;
+        quat.k = (m23 + m32) / s;
+    }
+    else
+    {
+        float s = 2.0f * sqrtf(1.0f + m33 - m11 - m22);
+
+        quat.r = (m21 - m12) / s;
+        quat.i = (m13 + m31) / s;
+        quat.j = (m23 + m32) / s;
+        quat.k = 0.25f * s;
+    }
+
+    return quat;
+}
+
+void D3D12::UpdateHMDMatrixPose()
+{
+    if (!m_pHMD)
+        return;
+
+    /*vr::IVRSettings* settings = vr::VRSettings();
+    if (settings != nullptr)
+    {
+        settings->GetFloat()
+    }*/
+
+    //vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
+
+    //m_iValidPoseCount = 0;
+    //m_strPoseClasses = "";
+    for (int nDevice = 0; nDevice < vr::k_unMaxTrackedDeviceCount; ++nDevice)
+    {
+        if (m_rTrackedDevicePose[nDevice].bPoseIsValid)
+        {
+            //m_iValidPoseCount++;
+            m_rmat4DevicePose[nDevice] =
+                ConvertSteamVRMatrixToMatrix4(m_rTrackedDevicePose[nDevice].mDeviceToAbsoluteTracking);
+            //if (m_rDevClassChar[nDevice] == 0)
+            {
+                switch (m_pHMD->GetTrackedDeviceClass(nDevice))
+                {
+                case vr::TrackedDeviceClass_Controller:
+                    //m_rDevClassChar[nDevice] = 'C';
+                    break;
+                case vr::TrackedDeviceClass_HMD:
+                {
+                    vr::ETrackedPropertyError e;
+                    float ipd = m_pHMD->GetFloatTrackedDeviceProperty(nDevice, vr::Prop_UserIpdMeters_Float, &e);
+                    if (e == vr::ETrackedPropertyError::TrackedProp_Success)
+                    {
+                        m_vrInfo.m_ipd = ipd;
+                    }
+
+                    float fov = m_pHMD->GetFloatTrackedDeviceProperty(nDevice, vr::Prop_FieldOfViewLeftDegrees_Float, &e);
+                    if (e == vr::ETrackedPropertyError::TrackedProp_Success)
+                    {
+                        m_vrInfo.m_fov = fov;
+                    }
+                    // m_rDevClassChar[nDevice] = 'H';
+                    break;
+                }
+                case vr::TrackedDeviceClass_Invalid:
+                    //m_rDevClassChar[nDevice] = 'I';
+                    break;
+                case vr::TrackedDeviceClass_GenericTracker:
+                    //m_rDevClassChar[nDevice] = 'G';
+                    break;
+                case vr::TrackedDeviceClass_TrackingReference:
+                    //m_rDevClassChar[nDevice] = 'T';
+                    break;
+                default:
+                    //m_rDevClassChar[nDevice] = '?';
+                    break;
+                }
+            }
+            //m_strPoseClasses += m_rDevClassChar[nDevice];
+        }
+    }
+
+    if (m_rTrackedDevicePose[vr::k_unTrackedDeviceIndex_Hmd].bPoseIsValid)
+    {
+        m_hmdDevicePose = m_rmat4DevicePose[vr::k_unTrackedDeviceIndex_Hmd];
+        m_hmdDevicePose.Invert();
+
+        m_vrInfo.m_position = Vector3(m_hmdDevicePose[12], m_hmdDevicePose[13], m_hmdDevicePose[14]);
+        m_vrInfo.m_rotation = Matrix4ToQuat(m_hmdDevicePose);
+    }
 }
