@@ -164,41 +164,44 @@ void* D3D12::CRenderNode_Present_InternalPresent(int32_t* apDeviceIndex, uint8_t
 
     if (d3d12.hack_vrInitialized)
     {
-        const auto bufferIndex = (d3d12.m_pdxgiSwapChain != nullptr) ? (d3d12.m_pdxgiSwapChain->GetCurrentBackBufferIndex()) : (d3d12.m_downlevelBufferIndex);
-        auto& frameContext = d3d12.m_frameContexts[bufferIndex];
-
-        vr::VRTextureBounds_t bounds;
-        bounds.uMin = 0.0f;
-        bounds.uMax = 1.0f;
-        bounds.vMin = 0.0f;
-        bounds.vMax = 1.0f;
-
-        if (!d3d12.m_vrInfo.m_isRightEye)
+        if (d3d12.m_pHMD != nullptr)
         {
-            vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
+            const auto bufferIndex = (d3d12.m_pdxgiSwapChain != nullptr) ? (d3d12.m_pdxgiSwapChain->GetCurrentBackBufferIndex()) : (d3d12.m_downlevelBufferIndex);
+            auto& frameContext = d3d12.m_frameContexts[bufferIndex];
 
-            d3d12.UpdateHMDMatrixPose();
+            vr::VRTextureBounds_t bounds;
+            bounds.uMin = 0.0f;
+            bounds.uMax = 1.0f;
+            bounds.vMin = 0.0f;
+            bounds.vMax = 1.0f;
 
-            vr::D3D12TextureData_t d3d12LeftEyeTexture = {frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0};
-            vr::Texture_t leftEyeTexture = {(void*)&d3d12LeftEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto};
-            vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, &bounds, vr::Submit_Default);
-
-            if (err != vr::EVRCompositorError::VRCompositorError_None)
+            if (!d3d12.m_vrInfo.m_isRightEye)
             {
-                std::string s;
-                s = std::format("Compositor error: {}", (int)err);
-                Log::Error(s);
-            }
-        }
-        else
-        {
-            vr::D3D12TextureData_t d3d12RightEyeTexture = {frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0};
-            vr::Texture_t rightEyeTexture = {(void*)&d3d12RightEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto};
-            vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture, &bounds, vr::Submit_Default);
-        }
+                vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
 
-        d3d12.m_vrInfo.m_isRightEye = !d3d12.m_vrInfo.m_isRightEye;
-        CET::Get().GetVM().SyncVr(d3d12.m_vrInfo);
+                d3d12.UpdateHMDMatrixPose();
+
+                vr::D3D12TextureData_t d3d12LeftEyeTexture = { frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0 };
+                vr::Texture_t leftEyeTexture = { (void*)&d3d12LeftEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto };
+                vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, &bounds, vr::Submit_Default);
+
+                if (err != vr::EVRCompositorError::VRCompositorError_None)
+                {
+                    std::string s;
+                    s = std::format("Compositor error: {}", (int)err);
+                    Log::Error(s);
+                }
+            }
+            else
+            {
+                vr::D3D12TextureData_t d3d12RightEyeTexture = { frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0 };
+                vr::Texture_t rightEyeTexture = { (void*)&d3d12RightEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto };
+                vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture, &bounds, vr::Submit_Default);
+            }
+
+            d3d12.m_vrInfo.m_isRightEye = !d3d12.m_vrInfo.m_isRightEye;
+            CET::Get().GetVM().SyncVr(d3d12.m_vrInfo);
+        }
     }
     else
     {
@@ -346,7 +349,7 @@ void D3D12::InitVr()
     if (eError != vr::VRInitError_None)
     {
         m_pHMD = nullptr;
-        Log::Error("Unable to init VR runtime: %s", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
+        Log::Error("Unable to init VR runtime: {}", vr::VR_GetVRInitErrorAsEnglishDescription(eError));
     }
 
     m_pRenderModels = (vr::IVRRenderModels*)vr::VR_GetGenericInterface(vr::IVRRenderModels_Version, &eError);
@@ -355,7 +358,7 @@ void D3D12::InitVr()
         m_pHMD = nullptr;
         vr::VR_Shutdown();
 
-        Log::Error("Unable to get render model interface: %s",
+        Log::Error("Unable to get render model interface: {}",
                   vr::VR_GetVRInitErrorAsEnglishDescription(eError));
     }
 
