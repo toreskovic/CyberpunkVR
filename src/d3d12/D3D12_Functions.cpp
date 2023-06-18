@@ -141,6 +141,8 @@ bool D3D12::Initialize()
     Log::Info("D3D12::Initialize() - initialization successful!");
     m_initialized = true;
 
+    InitVr();
+
     OnInitialized.Emit();
 
     return true;

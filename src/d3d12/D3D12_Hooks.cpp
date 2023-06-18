@@ -162,56 +162,43 @@ void* D3D12::CRenderNode_Present_InternalPresent(int32_t* apDeviceIndex, uint8_t
         }
     }
 
-    if (d3d12.hack_vrInitialized)
+    if (d3d12.m_pHMD != nullptr)
     {
-        if (d3d12.m_pHMD != nullptr)
+        const auto bufferIndex = (d3d12.m_pdxgiSwapChain != nullptr) ? (d3d12.m_pdxgiSwapChain->GetCurrentBackBufferIndex()) : (d3d12.m_downlevelBufferIndex);
+        auto& frameContext = d3d12.m_frameContexts[bufferIndex];
+
+        vr::VRTextureBounds_t bounds;
+        bounds.uMin = 0.0f;
+        bounds.uMax = 1.0f;
+        bounds.vMin = 0.0f;
+        bounds.vMax = 1.0f;
+
+        if (!d3d12.m_vrInfo.m_isRightEye)
         {
-            const auto bufferIndex = (d3d12.m_pdxgiSwapChain != nullptr) ? (d3d12.m_pdxgiSwapChain->GetCurrentBackBufferIndex()) : (d3d12.m_downlevelBufferIndex);
-            auto& frameContext = d3d12.m_frameContexts[bufferIndex];
+            vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
 
-            vr::VRTextureBounds_t bounds;
-            bounds.uMin = 0.0f;
-            bounds.uMax = 1.0f;
-            bounds.vMin = 0.0f;
-            bounds.vMax = 1.0f;
+            d3d12.UpdateHMDMatrixPose();
 
-            if (!d3d12.m_vrInfo.m_isRightEye)
+            vr::D3D12TextureData_t d3d12LeftEyeTexture = {frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0};
+            vr::Texture_t leftEyeTexture = {(void*)&d3d12LeftEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto};
+            vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, &bounds, vr::Submit_Default);
+
+            if (err != vr::EVRCompositorError::VRCompositorError_None)
             {
-                vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
-
-                d3d12.UpdateHMDMatrixPose();
-
-                vr::D3D12TextureData_t d3d12LeftEyeTexture = { frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0 };
-                vr::Texture_t leftEyeTexture = { (void*)&d3d12LeftEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto };
-                vr::EVRCompositorError err = vr::VRCompositor()->Submit(vr::Eye_Left, &leftEyeTexture, &bounds, vr::Submit_Default);
-
-                if (err != vr::EVRCompositorError::VRCompositorError_None)
-                {
-                    std::string s;
-                    s = std::format("Compositor error: {}", (int)err);
-                    Log::Error(s);
-                }
+                std::string s;
+                s = std::format("Compositor error: {}", (int)err);
+                Log::Error(s);
             }
-            else
-            {
-                vr::D3D12TextureData_t d3d12RightEyeTexture = { frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0 };
-                vr::Texture_t rightEyeTexture = { (void*)&d3d12RightEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto };
-                vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture, &bounds, vr::Submit_Default);
-            }
-
-            d3d12.m_vrInfo.m_isRightEye = !d3d12.m_vrInfo.m_isRightEye;
-            CET::Get().GetVM().SyncVr(d3d12.m_vrInfo);
         }
-    }
-    else
-    {
-        if (d3d12.hack_frameCounter > 600)
+        else
         {
-            d3d12.hack_vrInitialized = true;
-            d3d12.InitVr();
+            vr::D3D12TextureData_t d3d12RightEyeTexture = {frameContext.BackBuffer.Get(), d3d12.m_pCommandQueue.Get(), 0};
+            vr::Texture_t rightEyeTexture = {(void*)&d3d12RightEyeTexture, vr::TextureType_DirectX12, vr::ColorSpace_Auto};
+            vr::VRCompositor()->Submit(vr::Eye_Right, &rightEyeTexture, &bounds, vr::Submit_Default);
         }
 
-        d3d12.hack_frameCounter++;
+        d3d12.m_vrInfo.m_isRightEye = !d3d12.m_vrInfo.m_isRightEye;
+        CET::Get().GetVM().SyncVr(d3d12.m_vrInfo);
     }
 
     return d3d12.m_realInternalPresent(apDeviceIndex, aSomeSync, aSyncInterval);

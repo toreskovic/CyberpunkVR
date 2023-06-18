@@ -93,9 +93,6 @@ private:
     Vector3 m_hmdDeviceLocation;
     Quaternion m_hmdDeviceRotation;
 
-    int hack_frameCounter = 0;
-    bool hack_vrInitialized = false;
-
     VrInfo m_vrInfo;
 
     TPresentD3D12Downlevel* m_realPresentD3D12Downlevel{nullptr};
