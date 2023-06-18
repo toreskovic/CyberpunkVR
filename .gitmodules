@@ -4,3 +4,6 @@
 [submodule "vendor/luasocket"]
 	path = vendor/luasocket
 	url = https://github.com/diegonehab/luasocket.git
+[submodule "vendor/OpenVR"]
+	path = vendor/OpenVR
+	url = https://github.com/ValveSoftware/openvr.git

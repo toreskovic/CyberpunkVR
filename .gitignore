@@ -17,7 +17,3 @@ package/*
 vs2022/*
 vsxmake*/
 *.pyc
-
-# OpenVR
-/vendor/OpenVr/samples
-/vendor/OpenVr/
