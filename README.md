@@ -5,7 +5,7 @@
 
 **Cyberpunk VR** is a fork of [Cyber Engine Tweaks](https://github.com/maximegmd/CyberEngineTweaks) with added VR support. It's more of a personal proof of concept and is not actively maintained. That being said, there are optimizations and additional features that *might* come in the future.
 
-Current version works with Cyberpunk 2077 version 1.61.
+Current version works with Cyberpunk 2077 version 1.62.
 
 ## How-To
 - Download the current [release]()
