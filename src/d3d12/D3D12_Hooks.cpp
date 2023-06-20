@@ -430,65 +430,41 @@ Quaternion Matrix4ToQuat(Matrix4x4 mat)
 
 void D3D12::UpdateHMDMatrixPose()
 {
-    if (!m_pHMD)
-        return;
-
-    /*vr::IVRSettings* settings = vr::VRSettings();
-    if (settings != nullptr)
+    if (m_pHMD == nullptr)
     {
-        settings->GetFloat()
-    }*/
+        return;
+    }
 
-    //vr::VRCompositor()->WaitGetPoses(m_rTrackedDevicePose, vr::k_unMaxTrackedDeviceCount, NULL, 0);
-
-    //m_iValidPoseCount = 0;
-    //m_strPoseClasses = "";
     for (int nDevice = 0; nDevice < vr::k_unMaxTrackedDeviceCount; ++nDevice)
     {
         if (m_rTrackedDevicePose[nDevice].bPoseIsValid)
         {
-            //m_iValidPoseCount++;
             m_rmat4DevicePose[nDevice] =
                 ConvertSteamVRMatrixToMatrix4(m_rTrackedDevicePose[nDevice].mDeviceToAbsoluteTracking);
-            //if (m_rDevClassChar[nDevice] == 0)
+            switch (m_pHMD->GetTrackedDeviceClass(nDevice))
             {
-                switch (m_pHMD->GetTrackedDeviceClass(nDevice))
+            case vr::TrackedDeviceClass_Controller: break;
+            case vr::TrackedDeviceClass_HMD:
+            {
+                vr::ETrackedPropertyError e;
+                float ipd = m_pHMD->GetFloatTrackedDeviceProperty(nDevice, vr::Prop_UserIpdMeters_Float, &e);
+                if (e == vr::ETrackedPropertyError::TrackedProp_Success)
                 {
-                case vr::TrackedDeviceClass_Controller:
-                    //m_rDevClassChar[nDevice] = 'C';
-                    break;
-                case vr::TrackedDeviceClass_HMD:
-                {
-                    vr::ETrackedPropertyError e;
-                    float ipd = m_pHMD->GetFloatTrackedDeviceProperty(nDevice, vr::Prop_UserIpdMeters_Float, &e);
-                    if (e == vr::ETrackedPropertyError::TrackedProp_Success)
-                    {
-                        m_vrInfo.m_ipd = ipd;
-                    }
+                    m_vrInfo.m_ipd = ipd;
+                }
 
-                    float fov = m_pHMD->GetFloatTrackedDeviceProperty(nDevice, vr::Prop_FieldOfViewLeftDegrees_Float, &e);
-                    if (e == vr::ETrackedPropertyError::TrackedProp_Success)
-                    {
-                        m_vrInfo.m_fov = fov;
-                    }
-                    // m_rDevClassChar[nDevice] = 'H';
-                    break;
+                float fov = m_pHMD->GetFloatTrackedDeviceProperty(nDevice, vr::Prop_FieldOfViewLeftDegrees_Float, &e);
+                if (e == vr::ETrackedPropertyError::TrackedProp_Success)
+                {
+                    m_vrInfo.m_fov = fov;
                 }
-                case vr::TrackedDeviceClass_Invalid:
-                    //m_rDevClassChar[nDevice] = 'I';
-                    break;
-                case vr::TrackedDeviceClass_GenericTracker:
-                    //m_rDevClassChar[nDevice] = 'G';
-                    break;
-                case vr::TrackedDeviceClass_TrackingReference:
-                    //m_rDevClassChar[nDevice] = 'T';
-                    break;
-                default:
-                    //m_rDevClassChar[nDevice] = '?';
-                    break;
-                }
+                break;
             }
-            //m_strPoseClasses += m_rDevClassChar[nDevice];
+            case vr::TrackedDeviceClass_Invalid: break;
+            case vr::TrackedDeviceClass_GenericTracker: break;
+            case vr::TrackedDeviceClass_TrackingReference: break;
+            default: break;
+            }
         }
     }
 

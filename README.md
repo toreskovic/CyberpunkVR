@@ -7,7 +7,7 @@
 
 Current version works with Cyberpunk 2077 version 1.62.
 
-## How-To
+## Installing the mod
 - Download the current [release]()
 - Extract the .zip in your Cyberpunk 2077 folder
 - Add a custom resolution (e.g. via the nvidia control panel)
@@ -26,7 +26,13 @@ Current version works with Cyberpunk 2077 version 1.62.
 - [ ] Properly hiding the head mesh when driving
 - [ ] VR Controller support (emulating a standard controller)
 - [ ] QoL motion controls
-- [ ] Fixed Foveated Rendering
+- [ ] Variable Rate Shading
+
+## Removing the mod
+- Delete `CyberpunkVR.archive` from `Cyberpunk 2077\archive\pc\mod`
+- Delete `openvr_api.dll` from `Cyberpunk 2077\bin\x64\plugins`
+- Delete `cyber_engine_tweaks.asi` from `Cyberpunk 2077\bin\x64\plugins` or replace it with the original `cyber_engine_tweaks.asi`
+- Delete `Cyberpunk 2077\bin\x64\plugins\cyber_engine_tweaks\mods\CyberpunkVR`
 
 ## Contributing
 
