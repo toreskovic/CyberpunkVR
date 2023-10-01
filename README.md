@@ -8,7 +8,7 @@
 Current version works with Cyberpunk 2077 version 1.62.
 
 ## Installing the mod
-- Download the current [release]()
+- Download the current [release](https://github.com/toreskovic/CyberpunkVR/releases/download/v0.1.0/CyberpunkVR-v0.1.0.zip)
 - Extract the .zip in your Cyberpunk 2077 folder
 - Add a custom resolution (e.g. via the nvidia control panel)
     - The resolution must match your headset's aspect ratio for one eye (usually 1:1)
