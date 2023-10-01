@@ -309,28 +309,10 @@ void LuaVM::HookTDBIDToStringDEBUG(RED4ext::IScriptable*, RED4ext::CStackFrame* 
     }
 }
 
-uintptr_t LuaVM::HookSetLoadingState(uintptr_t aThis, int aState)
+void LuaVM::HookTranslateBytecode(uintptr_t aBinder, uintptr_t aData)
 {
-    static std::once_flag s_initBarrier;
-
-    if (aState == 2)
-    {
-        std::call_once(s_initBarrier, [] { s_vm->PostInitializeMods(); });
-    }
-
-    return s_vm->m_realSetLoadingState(aThis, aState);
-}
-
-bool LuaVM::HookTranslateBytecode(uintptr_t aBinder, uintptr_t aData)
-{
-    const auto ret = s_vm->m_realTranslateBytecode(aBinder, aData);
-
-    if (ret)
-    {
-        s_vm->PostInitializeScripting();
-    }
-
-    return ret;
+    s_vm->m_realTranslateBytecode(aBinder, aData);
+    s_vm->PostInitializeScripting();
 }
 
 uint64_t LuaVM::HookPlayerSpawned(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
@@ -346,6 +328,9 @@ uint64_t LuaVM::HookPlayerSpawned(uint64_t a1, uint64_t a2, uint64_t a3, uint64_
 uint64_t LuaVM::HookTweakDBLoad(uintptr_t aThis, uintptr_t aParam)
 {
     const auto ret = s_vm->m_realTweakDBLoad(aThis, aParam);
+
+    // Disable changes tracking added to TweakDB in patch 2.0 and causing instability.
+    RED4ext::TweakDB::Get()->unk160 = 0;
 
     s_vm->PostInitializeTweakDB();
 
@@ -370,6 +355,32 @@ void LuaVM::Hook()
     }
 
     {
+        const RED4ext::RelocPtr<uint8_t> func(CyberEngineTweaks::Addresses::CScript_LogError);
+        uint8_t* pLocation = func.GetAddr();
+
+        if (pLocation)
+        {
+            if (MH_CreateHook(pLocation, reinterpret_cast<void*>(&HookLog), reinterpret_cast<void**>(&m_realLogError)) != MH_OK || MH_EnableHook(pLocation) != MH_OK)
+                Log::Error("Could not hook CScript::Log function!");
+            else
+                Log::Info("CScript::Log function hook complete!");
+        }
+    }
+
+    {
+        const RED4ext::RelocPtr<uint8_t> func(CyberEngineTweaks::Addresses::CScript_LogWarning);
+        uint8_t* pLocation = func.GetAddr();
+
+        if (pLocation)
+        {
+            if (MH_CreateHook(pLocation, reinterpret_cast<void*>(&HookLog), reinterpret_cast<void**>(&m_realLogWarning)) != MH_OK || MH_EnableHook(pLocation) != MH_OK)
+                Log::Error("Could not hook CScript::Log function!");
+            else
+                Log::Info("CScript::Log function hook complete!");
+        }
+    }
+
+    {
         const RED4ext::RelocPtr<uint8_t> func(CyberEngineTweaks::Addresses::CScript_LogChannel);
         uint8_t* pLocation = func.GetAddr();
 
@@ -377,6 +388,19 @@ void LuaVM::Hook()
         {
             if (MH_CreateHook(pLocation, reinterpret_cast<void*>(&HookLogChannel), reinterpret_cast<void**>(&m_realLogChannel)) != MH_OK || MH_EnableHook(pLocation) != MH_OK)
                 Log::Error("Could not hook CScript::LogChannel function!");
+            else
+                Log::Info("CScript::LogChannel function hook complete!");
+        }
+    }
+
+    {
+        const RED4ext::RelocPtr<uint8_t> func(CyberEngineTweaks::Addresses::CScript_LogChannelWarning);
+        uint8_t* pLocation = func.GetAddr();
+
+        if (pLocation)
+        {
+            if (MH_CreateHook(pLocation, reinterpret_cast<void*>(&HookLogChannel), reinterpret_cast<void**>(&m_realLogChannelWarning)) != MH_OK || MH_EnableHook(pLocation) != MH_OK)
+                Log::Error("Could not hook CScript::LogChannelWarning function!");
             else
                 Log::Info("CScript::LogChannel function hook complete!");
         }

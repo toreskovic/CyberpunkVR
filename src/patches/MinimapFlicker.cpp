@@ -1,5 +1,9 @@
 #include <stdafx.h>
 
+/**
+
+Does not seem to be needed since 2.0, keeping in case we need it again
+
 void MinimapFlickerPatch()
 {
     const RED4ext::RelocPtr<uint8_t> func(CyberEngineTweaks::Addresses::CPatches_MinimapFlicker);
@@ -20,3 +24,4 @@ void MinimapFlickerPatch()
 
     Log::Info("Minimap Flicker Patch: success");
 }
+*/

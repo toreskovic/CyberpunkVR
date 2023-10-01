@@ -14,6 +14,8 @@
 #include <RED4ext/Scripting/Natives/Generated/Vector2.hpp>
 #include <RED4ext/Scripting/Natives/Generated/Vector3.hpp>
 
+#include "RED4ext/Scripting/Utils.hpp"
+
 bool TweakDBEditor::s_recordsFilterIsRegex = false;
 bool TweakDBEditor::s_flatsFilterIsRegex = false;
 char TweakDBEditor::s_recordsFilterBuffer[256]{};
@@ -137,8 +139,10 @@ void TweakDBEditor::OnUpdate()
 
     if (!m_initialized)
     {
-        RefreshAll();
-        m_initialized = true;
+        RebuildCache();
+
+        ImGui::TextUnformatted("Rebuilding cache...");
+        return;
     }
 
     if (ImGui::BeginTabBar("TweakDBEditor-Bar"))
@@ -177,6 +181,34 @@ void TweakDBEditor::OnUpdate()
 
         ImGui::EndTabBar();
     }
+}
+
+void TweakDBEditor::RebuildCache()
+{
+    using namespace std::chrono_literals;
+
+    if (m_rebuildingCache)
+    {
+        assert(m_rebuildCacheFuture.valid());
+        if (m_rebuildCacheFuture.wait_for(3ms) != std::future_status::ready)
+            return;
+
+        m_rebuildCacheFuture.get();
+        m_rebuildingCache = false;
+        m_initialized = true;
+
+        return;
+    }
+
+    m_rebuildingCache = true;
+
+    m_rebuildCacheFuture = std::async(
+        std::launch::async,
+        [this]
+        {
+            RefreshAll();
+            FilterAll();
+        });
 }
 
 void TweakDBEditor::RefreshAll()
@@ -1572,8 +1604,8 @@ void TweakDBEditor::DrawAdvancedTab()
 
     if (ImGui::Button("Refresh all"))
     {
-        RefreshAll();
-        FilterAll();
+        // prompt widget reinitialization
+        m_initialized = false;
     }
 
     if (ImGui::BeginChild("CreateRecord", ImVec2(0.0f, 0.0f), true))

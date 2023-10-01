@@ -5,9 +5,7 @@
 
 void PatchesSettings::Load(const nlohmann::json& aConfig)
 {
-    RemovePedestrians = aConfig.value("remove_pedestrians", RemovePedestrians);
     SkipStartMenu = aConfig.value("skip_start_menu", SkipStartMenu);
-    AmdSmt = aConfig.value("amd_smt", AmdSmt);
     AsyncCompute = aConfig.value("disable_async_compute", AsyncCompute);
     Antialiasing = aConfig.value("disable_antialiasing", Antialiasing);
     DisableIntroMovies = aConfig.value("disable_intro_movies", DisableIntroMovies);
@@ -20,11 +18,9 @@ void PatchesSettings::Load(const nlohmann::json& aConfig)
 nlohmann::json PatchesSettings::Save() const
 {
     return {
-        {"remove_pedestrians", RemovePedestrians},
         {"disable_async_compute", AsyncCompute},
         {"disable_antialiasing", Antialiasing},
         {"skip_start_menu", SkipStartMenu},
-        {"amd_smt", AmdSmt},
         {"disable_intro_movies", DisableIntroMovies},
         {"disable_vignette", DisableVignette},
         {"disable_boundary_teleport", DisableBoundaryTeleport},
@@ -61,7 +57,6 @@ void DeveloperSettings::Load(const nlohmann::json& aConfig)
 {
     RemoveDeadBindings = aConfig.value("remove_dead_bindings", RemoveDeadBindings);
     EnableImGuiAssertions = aConfig.value("enable_imgui_assertions", EnableImGuiAssertions);
-    EnableDebug = aConfig.value("enable_debug", EnableDebug);
     DumpGameOptions = aConfig.value("dump_game_options", DumpGameOptions);
     MaxLinesConsoleHistory = aConfig.value("max_lines_console_history", MaxLinesConsoleHistory);
     PersistentConsole = aConfig.value("persistent_console", PersistentConsole);
@@ -75,7 +70,7 @@ nlohmann::json DeveloperSettings::Save() const
     // set global "Enable ImGui Assertions"
     g_ImGuiAssertionsEnabled = EnableImGuiAssertions;
 
-    return {{"remove_dead_bindings", RemoveDeadBindings}, {"enable_imgui_assertions", EnableImGuiAssertions},    {"enable_debug", EnableDebug},
+    return {{"remove_dead_bindings", RemoveDeadBindings}, {"enable_imgui_assertions", EnableImGuiAssertions}, 
             {"dump_game_options", DumpGameOptions},       {"max_lines_console_history", MaxLinesConsoleHistory}, {"persistent_console", PersistentConsole}};
 }
 
@@ -97,7 +92,13 @@ void Options::Load()
     if (!configFile)
         return;
 
-    auto config = nlohmann::json::parse(configFile);
+    auto config = nlohmann::json::parse(configFile, nullptr, false);
+
+    if (config.is_discarded())
+    {
+        Log::Warn("Failed to parse config.json, using default config instead.");
+        return;
+    }
 
     // patches config
     const auto& patchesConfig = config["patches"];
@@ -150,16 +151,16 @@ Options::Options(Paths& aPaths)
             }* pTranslations;
 
             UINT transBytes = 0;
-            if (VerQueryValue(verInfo.get(), _T("\\VarFileInfo\\Translation"), reinterpret_cast<void**>(&pTranslations), &transBytes))
+            if (VerQueryValue(verInfo.get(), TEXT("\\VarFileInfo\\Translation"), reinterpret_cast<void**>(&pTranslations), &transBytes))
             {
                 UINT dummy;
                 TCHAR* productName = nullptr;
                 TCHAR subBlock[64];
                 for (UINT i = 0; i < (transBytes / sizeof(*pTranslations)); i++)
                 {
-                    _stprintf(subBlock, _T("\\StringFileInfo\\%04x%04x\\ProductName"), pTranslations[i].Language, pTranslations[i].CodePage);
+                    _stprintf(subBlock, TEXT("\\StringFileInfo\\%04x%04x\\ProductName"), pTranslations[i].Language, pTranslations[i].CodePage);
                     if (VerQueryValue(verInfo.get(), subBlock, reinterpret_cast<void**>(&productName), &dummy))
-                        if (_tcscmp(productName, _T("Cyberpunk 2077")) == 0)
+                        if (_tcscmp(productName, TEXT("Cyberpunk 2077")) == 0)
                         {
                             ExeValid = true;
                             break;

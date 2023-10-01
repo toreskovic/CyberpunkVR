@@ -34,7 +34,7 @@
 #include <TiltedCore/StackAllocator.hpp>
 #include <TiltedCore/TaskQueue.hpp>
 
-#include <atlcomcli.h>
+#include <tchar.h>
 #include <d3d12.h>
 #include <d3d11.h>
 #include <dxgi1_6.h>
@@ -53,6 +53,7 @@
 #include <execution>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <mutex>

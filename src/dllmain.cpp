@@ -6,15 +6,11 @@
 
 #include "scripting/GameHooks.h"
 
-void EnableDebugPatch();
 void StartScreenPatch();
-void RemovePedsPatch();
 void OptionsInitHook();
 void DisableIntroMoviesPatch();
 void DisableVignettePatch();
 void DisableBoundaryTeleportPatch();
-void SmtAmdPatch();
-void MinimapFlickerPatch();
 
 static HANDLE s_modInstanceMutex = nullptr;
 
@@ -31,19 +27,14 @@ static void Initialize()
         const auto& options = CET::Get().GetOptions();
 
         // single instance check
-        s_modInstanceMutex = CreateMutex(nullptr, TRUE, _T("Cyber Engine Tweaks Module Instance"));
+        s_modInstanceMutex = CreateMutex(nullptr, TRUE, TEXT("Cyber Engine Tweaks Module Instance"));
         if (s_modInstanceMutex == nullptr)
             return;
 
         // initialize patches
-        if (options.Developer.EnableDebug)
-            EnableDebugPatch();
 
-        if (options.Patches.SkipStartMenu)
-            StartScreenPatch();
-
-        if (options.Patches.RemovePedestrians)
-            RemovePedsPatch();
+        //if (options.Patches.SkipStartMenu)
+        //    StartScreenPatch();
 
         if (options.Patches.DisableIntroMovies)
             DisableIntroMoviesPatch();
@@ -54,11 +45,6 @@ static void Initialize()
         if (options.Patches.DisableBoundaryTeleport)
             DisableBoundaryTeleportPatch();
 
-        if (options.Patches.AmdSmt)
-            SmtAmdPatch();
-
-        if (options.Patches.MinimapFlicker)
-            MinimapFlickerPatch();
 
         OptionsInitHook();
 
